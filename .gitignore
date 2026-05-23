@@ -1,0 +1,20 @@
+# Build output
+main.js
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+.gitkeep
+
+# Obsidian (when testing in a vault)
+data.json
+

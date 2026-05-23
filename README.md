@@ -16,6 +16,8 @@ Classify your Obsidian documents using the [Traffic Light Protocol (TLP)](https:
 
 ![TLP badge in exported PDF header](screenshots/pdf-badge.png)
 
+![TLP indicator in the status bar](screenshots/obsidian_document_badge.png)
+
 ## Installation
 
 ### From community plugins
