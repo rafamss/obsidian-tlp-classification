@@ -3,7 +3,6 @@ main.js
 
 # Node
 node_modules/
-package-lock.json
 
 # IDE
 .idea/
@@ -13,7 +12,6 @@ package-lock.json
 .DS_Store
 Thumbs.db
 .directory
-.gitkeep
 
 # Obsidian (when testing in a vault)
 data.json

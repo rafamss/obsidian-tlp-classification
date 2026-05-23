@@ -28,7 +28,7 @@ Classify your Obsidian documents using the [Traffic Light Protocol (TLP)](https:
 
 ### Manual installation
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/YOUR_USERNAME/obsidian-tlp-classification/releases/latest)
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/rafamss/obsidian-tlp-classification/releases/latest)
 2. Create `.obsidian/plugins/tlp-classification/` in your vault
 3. Copy the three files into that folder
 4. Enable the plugin in **Settings → Community plugins**
@@ -109,7 +109,7 @@ Colors follow the [FIRST.org TLP 2.0 specification](https://www.first.org/tlp/).
 ## Building from source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/obsidian-tlp-classification.git
+git clone https://github.com/rafamss/obsidian-tlp-classification.git
 cd obsidian-tlp-classification
 npm install
 npm run build
