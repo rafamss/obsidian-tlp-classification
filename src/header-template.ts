@@ -69,8 +69,7 @@ export function generateTemplate(
 	const badge = buildBadgeHtml(level);
 	const pageNum = opts.showPageNumber ? buildPageNumber() : "";
 
-	// Determine flex alignment
-	let justifyContent: string;
+	// Distribute the badge and page number across the three slots
 	let leftSlot: string;
 	let centerSlot: string;
 	let rightSlot: string;
@@ -80,20 +79,17 @@ export function generateTemplate(
 			leftSlot = badge;
 			centerSlot = "";
 			rightSlot = pageNum;
-			justifyContent = "space-between";
 			break;
 		case "center":
 			leftSlot = pageNum;
 			centerSlot = badge;
 			rightSlot = "";
-			justifyContent = "center";
 			break;
 		case "right":
 		default:
 			leftSlot = "";
 			centerSlot = pageNum;
 			rightSlot = badge;
-			justifyContent = pageNum ? "space-between" : "flex-end";
 			break;
 	}
 

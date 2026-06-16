@@ -57,13 +57,14 @@ export class TlpSelectorModal extends Modal {
 
 			// Badge
 			const badge = row.createSpan({ cls: "tlp-badge" });
-			badge.style.backgroundColor = level.bgColor;
-			badge.style.color = level.fontColor;
-			if (level.value === "CLEAR") {
-				badge.style.border = "1px solid #555";
-			} else {
-				badge.style.border = `1px solid ${level.fontColor}40`;
-			}
+			badge.setCssStyles({
+				backgroundColor: level.bgColor,
+				color: level.fontColor,
+				border:
+					level.value === "CLEAR"
+						? "1px solid #555"
+						: `1px solid ${level.fontColor}40`,
+			});
 			badge.setText(level.label);
 
 			// Description

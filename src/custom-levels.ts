@@ -39,23 +39,37 @@ export async function parseCustomLevels(
 		return null;
 	}
 
-	const rawLevels = cache.frontmatter.levels;
+	const rawLevels: unknown = cache.frontmatter.levels;
 	if (!Array.isArray(rawLevels)) {
 		return null;
 	}
 
 	const levels: TlpLevel[] = [];
-	for (const raw of rawLevels) {
+	for (const item of rawLevels as unknown[]) {
+		if (typeof item !== "object" || item === null) {
+			continue;
+		}
+		const raw = item as Record<string, unknown>;
 		if (
 			typeof raw.value === "string" &&
 			typeof raw.fontColor === "string"
 		) {
+			const value = raw.value.toUpperCase();
 			levels.push({
-				value: raw.value.toUpperCase(),
-				label: raw.label || `TLP:${raw.value.toUpperCase()}`,
+				value,
+				label:
+					typeof raw.label === "string"
+						? raw.label
+						: `TLP:${value}`,
 				fontColor: raw.fontColor,
-				bgColor: raw.bgColor || "#000000",
-				description: raw.description || "",
+				bgColor:
+					typeof raw.bgColor === "string"
+						? raw.bgColor
+						: "#000000",
+				description:
+					typeof raw.description === "string"
+						? raw.description
+						: "",
 			});
 		}
 	}
