@@ -173,9 +173,11 @@
 	display: none;
 }
 
-/* Hide the native Obsidian input we replace with our badge widget */
-.tlp-native-hidden {
-	display: none !important;
+/* Hide the native Obsidian input we replace with our badge widget.
+   Scoped to the property value container to win specificity over
+   Obsidian's own input rules without resorting to !important. */
+.metadata-property-value .tlp-native-hidden {
+	display: none;
 }
 
 /* ── Hide auto-generated template properties ── */
