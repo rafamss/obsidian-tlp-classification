@@ -1,4 +1,5 @@
 import {
+	App,
 	Plugin,
 	TFile,
 	MarkdownView,
@@ -10,6 +11,17 @@ import { generateTemplate } from "./header-template";
 import { TlpSelectorModal } from "./tlp-selector-modal";
 import { TlpSettingTab, TlpPluginSettings, DEFAULT_SETTINGS } from "./settings";
 import { parseCustomLevels } from "./custom-levels";
+
+/** Minimal shape of Obsidian's internal plugin registry we rely on. */
+interface ObsidianPluginsApi {
+	enabledPlugins?: Set<string>;
+	getPlugin?: (id: string) => unknown;
+}
+
+/** Data persisted by this plugin alongside its settings. */
+interface PersistedData {
+	betterExportPdfWarningShown?: boolean;
+}
 
 export default class TlpClassificationPlugin extends Plugin {
 	settings: TlpPluginSettings = DEFAULT_SETTINGS;
@@ -41,15 +53,15 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		// Commands
 		this.addCommand({
-			id: "set-tlp-classification",
-			name: "Set TLP classification",
+			id: "set-classification",
+			name: "Set classification",
 			callback: () => this.openTlpSelector(),
 		});
 
 		this.addCommand({
-			id: "remove-tlp-classification",
-			name: "Remove TLP classification",
-			callback: () => this.removeTlpFromActiveFile(),
+			id: "remove-classification",
+			name: "Remove classification",
+			callback: () => void this.removeTlpFromActiveFile(),
 		});
 
 		// React to file changes
@@ -90,7 +102,7 @@ export default class TlpClassificationPlugin extends Plugin {
 			this.updateStatusBar();
 			this.updateEditorBanner();
 			this.debouncedEnhanceProperties();
-			this.checkBetterExportPdf();
+			void this.checkBetterExportPdf();
 		});
 	}
 
@@ -109,14 +121,15 @@ export default class TlpClassificationPlugin extends Plugin {
 	 * works for classification, but PDF badges won't render.
 	 */
 	private async checkBetterExportPdf(): Promise<void> {
-		const plugins = (this.app as any).plugins;
+		const plugins = (this.app as App & { plugins?: ObsidianPluginsApi })
+			.plugins;
 		const isInstalled =
 			plugins?.enabledPlugins?.has("better-export-pdf") ||
-			plugins?.getPlugin?.("better-export-pdf");
+			Boolean(plugins?.getPlugin?.("better-export-pdf"));
 
 		if (!isInstalled) {
-			const alreadyWarned = await this.loadData();
-			if (!alreadyWarned?.betterExportPdfWarningShown) {
+			const data = ((await this.loadData()) ?? {}) as PersistedData;
+			if (!data.betterExportPdfWarningShown) {
 				new Notice(
 					"TLP Classification: For TLP badges in exported PDFs, " +
 					"install the \"Better Export PDF\" plugin. " +
@@ -124,7 +137,7 @@ export default class TlpClassificationPlugin extends Plugin {
 					8000
 				);
 				await this.saveData({
-					...((await this.loadData()) || {}),
+					...data,
 					betterExportPdfWarningShown: true,
 				});
 			}
@@ -134,11 +147,8 @@ export default class TlpClassificationPlugin extends Plugin {
 	// ─── Settings ───────────────────────────────────────────
 
 	async loadSettings(): Promise<void> {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
+		const data = (await this.loadData()) as Partial<TlpPluginSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
 	}
 
 	async saveSettings(): Promise<void> {
@@ -171,7 +181,7 @@ export default class TlpClassificationPlugin extends Plugin {
 		});
 
 		// Observe the entire workspace container for subtree changes
-		const container = document.querySelector(".workspace");
+		const container = activeDocument.querySelector(".workspace");
 		if (container) {
 			this.propertiesObserver.observe(container, {
 				childList: true,
@@ -188,7 +198,7 @@ export default class TlpClassificationPlugin extends Plugin {
 		const propName = this.settings.tlpPropertyName.toLowerCase();
 
 		// Find all property rows matching our TLP property name
-		const rows = document.querySelectorAll(
+		const rows = activeDocument.querySelectorAll(
 			`.metadata-property[data-property-key="${propName}"]`
 		);
 
@@ -196,7 +206,7 @@ export default class TlpClassificationPlugin extends Plugin {
 			// Skip if already enhanced
 			if (row.querySelector(".tlp-property-widget")) return;
 
-			const valueContainer = row.querySelector(
+			const valueContainer = row.querySelector<HTMLElement>(
 				".metadata-property-value"
 			);
 			if (!valueContainer) return;
@@ -209,43 +219,59 @@ export default class TlpClassificationPlugin extends Plugin {
 				: null;
 
 			// Hide the native input
-			const nativeInput = valueContainer.querySelector(
+			const nativeInput = valueContainer.querySelector<HTMLElement>(
 				"input, select, .multi-select-container, .metadata-input-longtext"
 			);
 			if (nativeInput) {
-				(nativeInput as HTMLElement).style.display = "none";
+				nativeInput.addClass("tlp-native-hidden");
 			}
 
 			// Create our custom widget
-			const widget = document.createElement("div");
-			widget.className = "tlp-property-widget";
-			widget.setAttribute("aria-label", "Click to change TLP classification");
+			const widget = valueContainer.createDiv({
+				cls: "tlp-property-widget",
+				attr: {
+					"aria-label": "Click to change TLP classification",
+				},
+			});
 
 			if (level) {
 				// Render the badge
-				const badge = document.createElement("span");
-				badge.className = "tlp-prop-badge";
-				badge.style.backgroundColor = level.bgColor;
-				badge.style.color = level.fontColor;
-				if (level.value === "CLEAR") {
-					badge.style.border = "1px solid #555";
-				} else {
-					badge.style.border = `1px solid ${level.fontColor}40`;
-				}
-				badge.textContent = level.label;
-				widget.appendChild(badge);
+				const badge = widget.createSpan({ cls: "tlp-prop-badge" });
+				badge.setCssStyles({
+					backgroundColor: level.bgColor,
+					color: level.fontColor,
+					border:
+						level.value === "CLEAR"
+							? "1px solid #555"
+							: `1px solid ${level.fontColor}40`,
+				});
+				badge.setText(level.label);
 
 				// Chevron
-				const chevron = document.createElement("span");
-				chevron.className = "tlp-prop-chevron";
-				chevron.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-				widget.appendChild(chevron);
+				const chevron = widget.createSpan({
+					cls: "tlp-prop-chevron",
+				});
+				const svg = chevron.createSvg("svg", {
+					attr: {
+						width: "12",
+						height: "12",
+						viewBox: "0 0 24 24",
+						fill: "none",
+						stroke: "currentColor",
+						"stroke-width": "2",
+						"stroke-linecap": "round",
+						"stroke-linejoin": "round",
+					},
+				});
+				svg.createSvg("polyline", {
+					attr: { points: "6 9 12 15 18 9" },
+				});
 			} else {
 				// No classification yet
-				const placeholder = document.createElement("span");
-				placeholder.className = "tlp-prop-placeholder";
-				placeholder.textContent = "Set classification…";
-				widget.appendChild(placeholder);
+				widget.createSpan({
+					cls: "tlp-prop-placeholder",
+					text: "Set classification…",
+				});
 			}
 
 			// Open selector on click
@@ -254,8 +280,6 @@ export default class TlpClassificationPlugin extends Plugin {
 				e.stopPropagation();
 				this.openTlpSelector();
 			});
-
-			valueContainer.appendChild(widget);
 		});
 	}
 
@@ -281,7 +305,7 @@ export default class TlpClassificationPlugin extends Plugin {
 			this.levels,
 			currentTlp,
 			(level: TlpLevel) => {
-				this.applyTlpToFile(file, level);
+				void this.applyTlpToFile(file, level);
 			}
 		).open();
 	}
@@ -294,7 +318,7 @@ export default class TlpClassificationPlugin extends Plugin {
 	private getTlpFromFile(file: TFile): string | null {
 		const cache = this.app.metadataCache.getFileCache(file);
 		const propName = this.settings.tlpPropertyName;
-		const value = cache?.frontmatter?.[propName];
+		const value: unknown = cache?.frontmatter?.[propName];
 		return typeof value === "string" ? value : null;
 	}
 
@@ -316,7 +340,7 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		await this.app.fileManager.processFrontMatter(
 			file,
-			(frontmatter) => {
+			(frontmatter: Record<string, unknown>) => {
 				frontmatter[propName] = level.value;
 				frontmatter[target] = template;
 			}
@@ -328,7 +352,7 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		// Re-enhance the properties panel after a short delay
 		// to let Obsidian re-render the frontmatter
-		setTimeout(() => this.enhancePropertiesPanel(), 200);
+		window.setTimeout(() => this.enhancePropertiesPanel(), 200);
 	}
 
 	/**
@@ -346,7 +370,7 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		await this.app.fileManager.processFrontMatter(
 			file,
-			(frontmatter) => {
+			(frontmatter: Record<string, unknown>) => {
 				delete frontmatter[propName];
 				delete frontmatter[target];
 			}
@@ -378,13 +402,13 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		const cache = this.app.metadataCache.getFileCache(file);
 		const target = this.settings.templateTarget;
-		const current = cache?.frontmatter?.[target];
+		const current: unknown = cache?.frontmatter?.[target];
 
 		// Only write if out of sync
 		if (current !== expected) {
-			this.app.fileManager.processFrontMatter(
+			void this.app.fileManager.processFrontMatter(
 				file,
-				(frontmatter) => {
+				(frontmatter: Record<string, unknown>) => {
 					frontmatter[target] = expected;
 				}
 			);
@@ -404,10 +428,10 @@ export default class TlpClassificationPlugin extends Plugin {
 		if (!this.statusBarEl) return;
 
 		if (!this.settings.showStatusBar) {
-			this.statusBarEl.style.display = "none";
+			this.statusBarEl.addClass("tlp-hidden");
 			return;
 		}
-		this.statusBarEl.style.display = "";
+		this.statusBarEl.removeClass("tlp-hidden");
 
 		const file = this.app.workspace.getActiveFile();
 		if (!file) {
@@ -425,14 +449,14 @@ export default class TlpClassificationPlugin extends Plugin {
 				const dot = this.statusBarEl.createSpan({
 					cls: "tlp-status-dot",
 				});
-				dot.style.backgroundColor = level.fontColor;
+				dot.setCssStyles({ backgroundColor: level.fontColor });
 
 				// Label
 				const label = this.statusBarEl.createSpan({
 					cls: "tlp-status-label",
 				});
 				label.setText(level.label);
-				label.style.color = level.fontColor;
+				label.setCssStyles({ color: level.fontColor });
 			} else {
 				// Unknown TLP value
 				const label = this.statusBarEl.createSpan({
@@ -457,10 +481,13 @@ export default class TlpClassificationPlugin extends Plugin {
 	 * is removed and redrawn on every call so it stays in sync.
 	 */
 	updateEditorBanner(): void {
-		// Remove any existing banners first
-		document
+		// Remove any existing banners and host markers first
+		activeDocument
 			.querySelectorAll(".tlp-editor-banner")
 			.forEach((el) => el.remove());
+		activeDocument
+			.querySelectorAll<HTMLElement>(".tlp-banner-host")
+			.forEach((el) => el.removeClass("tlp-banner-host"));
 
 		if (!this.settings.showEditorBanner) return;
 
@@ -477,11 +504,10 @@ export default class TlpClassificationPlugin extends Plugin {
 		if (!level) return;
 
 		const container = view.contentEl;
-		container.style.position = "relative";
+		container.addClass("tlp-banner-host");
 
-		const banner = document.createElement("div");
-		banner.className = "tlp-editor-banner";
-		banner.style.backgroundColor = level.fontColor;
+		const banner = container.createDiv({ cls: "tlp-editor-banner" });
+		banner.setCssStyles({ backgroundColor: level.fontColor });
 		container.prepend(banner);
 	}
 }

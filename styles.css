@@ -152,6 +152,10 @@
 
 /* ── Editor banner ──────────────────────────── */
 
+.tlp-banner-host {
+	position: relative;
+}
+
 .tlp-editor-banner {
 	position: absolute;
 	top: 0;
@@ -161,6 +165,17 @@
 	z-index: 10;
 	pointer-events: none;
 	transition: background-color 200ms ease;
+}
+
+/* ── Utility classes ─────────────────────────── */
+
+.tlp-hidden {
+	display: none;
+}
+
+/* Hide the native Obsidian input we replace with our badge widget */
+.tlp-native-hidden {
+	display: none !important;
 }
 
 /* ── Hide auto-generated template properties ── */
