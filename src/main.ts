@@ -60,6 +60,7 @@ export default class TlpClassificationPlugin extends Plugin {
 				if (activeFile && file.path === activeFile.path) {
 					this.debouncedSync(file);
 					this.updateStatusBar();
+					this.updateEditorBanner();
 					this.debouncedEnhanceProperties();
 				}
 			})
@@ -69,6 +70,7 @@ export default class TlpClassificationPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on("file-open", () => {
 				this.updateStatusBar();
+				this.updateEditorBanner();
 				this.debouncedEnhanceProperties();
 			})
 		);
@@ -86,6 +88,7 @@ export default class TlpClassificationPlugin extends Plugin {
 		// Initial status bar update
 		this.app.workspace.onLayoutReady(() => {
 			this.updateStatusBar();
+			this.updateEditorBanner();
 			this.debouncedEnhanceProperties();
 			this.checkBetterExportPdf();
 		});
@@ -321,6 +324,7 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		new Notice(`Classification set to ${level.label}`);
 		this.updateStatusBar();
+		this.updateEditorBanner();
 
 		// Re-enhance the properties panel after a short delay
 		// to let Obsidian re-render the frontmatter
@@ -350,6 +354,7 @@ export default class TlpClassificationPlugin extends Plugin {
 
 		new Notice("TLP classification removed");
 		this.updateStatusBar();
+		this.updateEditorBanner();
 	}
 
 	// ─── Sync: keep template in sync when TLP changes manually ──
@@ -442,5 +447,41 @@ export default class TlpClassificationPlugin extends Plugin {
 			});
 			label.setText("No TLP");
 		}
+	}
+
+	// ─── Editor banner ──────────────────────────────────────
+
+	/**
+	 * Render a thin colored stripe at the top of the editor as a
+	 * visual reminder of the document's classification. The stripe
+	 * is removed and redrawn on every call so it stays in sync.
+	 */
+	updateEditorBanner(): void {
+		// Remove any existing banners first
+		document
+			.querySelectorAll(".tlp-editor-banner")
+			.forEach((el) => el.remove());
+
+		if (!this.settings.showEditorBanner) return;
+
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) return;
+
+		const file = this.app.workspace.getActiveFile();
+		if (!file) return;
+
+		const tlpValue = this.getTlpFromFile(file);
+		if (!tlpValue) return;
+
+		const level = findTlpLevel(tlpValue, this.levels);
+		if (!level) return;
+
+		const container = view.contentEl;
+		container.style.position = "relative";
+
+		const banner = document.createElement("div");
+		banner.className = "tlp-editor-banner";
+		banner.style.backgroundColor = level.fontColor;
+		container.prepend(banner);
 	}
 }

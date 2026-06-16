@@ -145,6 +145,7 @@ export class TlpSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showEditorBanner = value;
 						await this.plugin.saveSettings();
+						this.plugin.updateEditorBanner();
 					})
 			);
 

@@ -150,6 +150,19 @@
 	font-style: italic;
 }
 
+/* ── Editor banner ──────────────────────────── */
+
+.tlp-editor-banner {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	z-index: 10;
+	pointer-events: none;
+	transition: background-color 200ms ease;
+}
+
 /* ── Hide auto-generated template properties ── */
 
 .metadata-property[data-property-key="headertemplate"],
