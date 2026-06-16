@@ -1,7 +1,7 @@
 {
 	"id": "tlp-classification",
 	"name": "TLP Classification",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"minAppVersion": "1.4.4",
 	"description": "Classify documents using the Traffic Light Protocol (TLP). Visual selector in the properties panel, status bar indicator, and automatic PDF header/footer badge generation for Better Export PDF.",
 	"author": "Rafael Santos",
